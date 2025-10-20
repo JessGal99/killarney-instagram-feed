@@ -1,0 +1,79 @@
+<killarney-instagram-feed-preview.html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Killarney Grand Instagram Feed</title>
+<style>
+  body{margin:0;background:#121212;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center;padding:20px;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;width:100%;max-width:720px;}
+  .post{position:relative;padding-top:100%;overflow:hidden;border-radius:8px;cursor:pointer;background:#1c1c1c;transition:transform 0.2s;}
+  .post:hover{transform:scale(1.02);}
+  .post img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,0.85);color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:12px;display:none;}
+  .post.active .overlay{display:flex;}
+  .badge{position:absolute;top:6px;left:6px;background:rgba(255,255,255,0.2);color:#fff;font-size:11px;padding:3px 6px;border-radius:6px;}
+  .loader{display:flex;justify-content:center;align-items:center;height:300px;font-size:16px;color:#888;width:100%;max-width:720px;}
+</style>
+</head>
+<body>
+<div id="loader" class="loader">Loading Killarney Grand feed… 🍀</div>
+<div class="grid" id="instaGrid" style="display:none;"></div>
+
+<script>
+// -------------------------
+// STEP 1: Paste your Notion Internal Integration Secret here
+// -------------------------
+const notionToken = "ntn_j81357717796GstWcUiieTuj1L94i3roa1Os7WLYoqydlV"; //
+const databaseId = "2921e4ee068380959695e9162f61cabf";        // 
+
+async function fetchNotionPosts() {
+  const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${notionToken}`,
+      "Notion-Version": "2022-06-28",
+      "Content-Type": "application/json"
+    }
+  });
+  const data = await res.json();
+  return data.results.map(page=>{
+    return {
+      image: page.properties.Image.files?.[0]?.file?.url || page.properties.Image.url || "",
+      caption: page.properties.Caption.rich_text?.[0]?.plain_text || "",
+      date: page.properties["Post Date"].date?.start || "",
+      status: page.properties.Status.select?.name || "Live"
+    };
+  });
+}
+
+async function renderFeed(){
+  const loader=document.getElementById("loader");
+  const grid=document.getElementById("instaGrid");
+  loader.style.display="flex"; grid.style.display="none";
+
+  const posts = await fetchNotionPosts();
+
+  loader.style.display="none"; grid.style.display="grid";
+  grid.innerHTML="";
+  posts.forEach(post=>{
+    const div=document.createElement("div");
+    div.className="post";
+    div.innerHTML=`
+      <img src="${post.image}" alt="Post image" />
+      <div class="overlay">
+        <p>${post.caption.substring(0,150)}…</p>
+        <p><small>${new Date(post.date).toLocaleDateString()}</small></p>
+        <p><small>Status: ${post.status}</small></p>
+      </div>
+      ${post.status ? `<div class="badge">${post.status}</div>` : ""}
+    `;
+    div.addEventListener("click",()=>div.classList.toggle("active"));
+    grid.appendChild(div);
+  });
+}
+
+renderFeed();
+</script>
+</body>
+</html>
